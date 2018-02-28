@@ -3,12 +3,10 @@
 
 package com.microsoft.azure.sdk.iot.device;
 
+import com.microsoft.azure.sdk.iot.device.exceptions.TransportException;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubReceiveTask;
 import com.microsoft.azure.sdk.iot.device.transport.IotHubSendTask;
-import com.microsoft.azure.sdk.iot.device.transport.IotHubTransport;
-import com.microsoft.azure.sdk.iot.device.transport.amqps.AmqpsTransport;
-import com.microsoft.azure.sdk.iot.device.transport.https.HttpsTransport;
-import com.microsoft.azure.sdk.iot.device.transport.mqtt.MqttTransport;
+import com.microsoft.azure.sdk.iot.device.transport.IotHubTransportNew;
 
 import java.io.IOException;
 import java.util.List;
@@ -77,7 +75,7 @@ public final class DeviceIO
     private long receivePeriodInMilliseconds;
 
     private CustomLogger logger;
-    private IotHubTransport transport;
+    private IotHubTransportNew transport;
     private DeviceClientConfig config;
     private IotHubSendTask sendTask = null;
     private IotHubReceiveTask receiveTask = null;
@@ -108,37 +106,6 @@ public final class DeviceIO
         this.config = config;
         this.protocol = this.config.getProtocol();
 
- //Codes_SRS_DEVICE_IO_21_003: [The constructor shall initialize the IoT Hub transport that uses the `protocol` specified.]
-
-        switch (protocol)
-        {
-            case HTTPS:
-                this.config.setUseWebsocket(false);
-                this.transport = new HttpsTransport(this.config);
-                break;
-            case AMQPS:
-                this.config.setUseWebsocket(false);
-                this.transport = new AmqpsTransport(this.config);
-                break;
-            case AMQPS_WS:
-                this.config.setUseWebsocket(true);
-                this.transport = new AmqpsTransport(this.config);
-                break;
-            case MQTT:
-                this.config.setUseWebsocket(false);
-                this.transport = new MqttTransport(this.config);
-                break;
-            case MQTT_WS:
-                this.config.setUseWebsocket(true);
-                this.transport = new MqttTransport(this.config);
-                break;
-            default:
- //Codes_SRS_DEVICE_IO_21_005: [If the `protocol` is not valid, the constructor shall throw an IllegalArgumentException.]
-
-                // should never happen.
-                throw new IllegalStateException("Invalid client protocol specified.");
-        }
-
         /* Codes_SRS_DEVICE_IO_21_037: [The constructor shall initialize the `sendPeriodInMilliseconds` with default value of 10 milliseconds.] */
         this.sendPeriodInMilliseconds = sendPeriodInMilliseconds;
         /* Codes_SRS_DEVICE_IO_21_038: [The constructor shall initialize the `receivePeriodInMilliseconds` with default value of each protocol.] */
@@ -146,6 +113,34 @@ public final class DeviceIO
 
         /* Codes_SRS_DEVICE_IO_21_006: [The constructor shall set the `state` as `CLOSED`.] */
         this.state = IotHubClientState.CLOSED;
+
+        switch (this.protocol)
+        {
+            case HTTPS:
+                this.config.setUseWebsocket(false);
+                this.transport = new IotHubTransportNew(this.config);
+                break;
+            case AMQPS:
+                this.config.setUseWebsocket(false);
+                this.transport = new IotHubTransportNew(this.config);
+                break;
+            case AMQPS_WS:
+                this.config.setUseWebsocket(true);
+                this.transport = new IotHubTransportNew(this.config);
+                break;
+            case MQTT:
+                this.config.setUseWebsocket(false);
+                this.transport = new IotHubTransportNew(this.config);
+                break;
+            case MQTT_WS:
+                this.config.setUseWebsocket(true);
+                this.transport = new IotHubTransportNew(this.config);
+                break;
+            default:
+                //Codes_SRS_DEVICE_IO_21_005: [If the `protocol` is not valid, the constructor shall throw an IllegalArgumentException.]
+                // should never happen.
+                throw new IllegalStateException("Invalid client protocol specified.");
+        }
 
         this.logger = new CustomLogger(this.getClass());
         logger.LogInfo("DeviceIO object is created successfully, method name is %s ", logger.getMethodName());
@@ -167,7 +162,14 @@ public final class DeviceIO
 
         /* Codes_SRS_DEVICE_IO_21_012: [The open shall open the transport to communicate with an IoT Hub.] */
         /* Codes_SRS_DEVICE_IO_21_015: [If an error occurs in opening the transport, the open shall throw an IOException.] */
-        this.transport.open();
+        try
+        {
+            this.transport.open();
+        }
+        catch (TransportException e)
+        {
+            e.printStackTrace();
+        }
 
         /* Codes_SRS_DEVICE_IO_21_014: [The open shall schedule receive tasks to run every receivePeriodInMilliseconds milliseconds.] */
         /* Codes_SRS_DEVICE_IO_21_016: [The open shall set the `state` as `OPEN`.] */
@@ -196,7 +198,8 @@ public final class DeviceIO
         }
 
         // Codes_SRS_DEVICE_IO_12_003: [The open shall open the transport in multiplex mode to communicate with an IoT Hub.]
-        this.transport.multiplexOpen(deviceClientList);
+        //TODO
+        //this.transport.multiplexOpen(deviceClientList);
 
         // Codes_SRS_DEVICE_IO_12_004: [The open shall schedule send tasks to run every SEND_PERIOD_MILLIS milliseconds.]
         // Codes_SRS_DEVICE_IO_12_005: [The open shall schedule receive tasks to run every RECEIVE_PERIOD_MILLIS milliseconds.]
@@ -481,8 +484,14 @@ public final class DeviceIO
      * @param callbackContext a context to be passed to the callback. Can be
      * {@code null} if no callback is provided.
      */
-    public void registerConnectionStateCallback(IotHubConnectionStateCallback callback, Object callbackContext) {
+    public void registerConnectionStateCallback(IotHubConnectionStateCallback callback, Object callbackContext)
+    {
         /* Codes_SRS_DEVICE_IO_99_001: [The registerConnectionStateCallback shall register the callback with the transport.]*/
         this.transport.registerConnectionStateCallback(callback, callbackContext);
+    }
+
+    public void registerConnectionStatusChangeCallback(IotHubConnectionStatusChangeCallback statusChangeCallback, Object callbackContext)
+    {
+        //TODO
     }
 }
